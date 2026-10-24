@@ -185,6 +185,8 @@ export const createProduct = (req, res, next) => {
 
     // Run atomically with transaction
     const newProduct = transaction((tDb) => {
+      // Determine image path: uploaded file takes precedence over provided URL
+      const imagePath = req.file ? `/uploads/${req.file.filename}` : (image_url ? image_url : null);
       const result = tDb.run(`
         INSERT INTO products 
         (name, sku, description, category_id, supplier_id, unit_price, quantity, minimum_stock, unit, image_url)
@@ -199,7 +201,7 @@ export const createProduct = (req, res, next) => {
         qtyNum,
         minNum,
         unit || 'units',
-        image_url || null
+        imagePath
       ]);
 
       const productId = result.lastInsertRowid;
