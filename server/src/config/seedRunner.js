@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,14 +7,36 @@ import db, { query, get, run, exec, transaction } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+const legacyDemoPassword = 'admin123';
+
+const getBootstrapCredentials = () => {
+  const password = process.env.ADMIN_PASSWORD;
+  if (typeof password !== 'string' || password.length < 12) {
+    throw new Error('Set ADMIN_PASSWORD to a password of at least 12 characters before initializing or resetting the database.');
+  }
+
+  const email = (process.env.ADMIN_EMAIL || 'admin@stocksmart.ai').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error('ADMIN_EMAIL must be a valid email address.');
+  }
+
+  return { email, password };
+};
 
 export const seedDatabase = async (force = false) => {
   const schemaPath = path.resolve(__dirname, '../../../database/schema.sql');
   const schemaSql = fs.readFileSync(schemaPath, 'utf8');
   exec(schemaSql);
 
-  const existingAdmin = get('SELECT id FROM admins LIMIT 1');
+  const existingAdmin = get('SELECT id, password_hash FROM admins LIMIT 1');
   if (existingAdmin && !force) {
+    if (bcrypt.compareSync(legacyDemoPassword, existingAdmin.password_hash)) {
+      const { password } = getBootstrapCredentials();
+      const passwordHash = bcrypt.hashSync(password, bcrypt.genSaltSync(12));
+      run('UPDATE admins SET password_hash = ? WHERE id = ?', [passwordHash, existingAdmin.id]);
+      console.log('Replaced the legacy demo administrator password from ADMIN_PASSWORD.');
+    }
     console.log('Database already initialized with data. Skipping seed.');
     return;
   }
@@ -30,14 +53,14 @@ export const seedDatabase = async (force = false) => {
   console.log('Seeding database with StockSmart reference data...');
 
   // 1. Admin
-  const salt = bcrypt.genSaltSync(10);
-  const passwordHash = bcrypt.hashSync('admin123', salt);
+  const { email, password } = getBootstrapCredentials();
+  const passwordHash = bcrypt.hashSync(password, bcrypt.genSaltSync(12));
   run(`
     INSERT INTO admins (name, email, password_hash, role, avatar_url)
     VALUES (?, ?, ?, ?, ?)
   `, [
     'Aarav Sharma',
-    'admin@stocksmart.ai',
+    email,
     passwordHash,
     'Admin',
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256'
@@ -341,7 +364,7 @@ export const seedDatabase = async (force = false) => {
   // 6. Settings
   const defaultSettings = [
     { key: 'organization_name', value: 'StockSmart AI Campus & Enterprise' },
-    { key: 'admin_email', value: 'admin@stocksmart.ai' },
+    { key: 'admin_email', value: email },
     { key: 'default_min_stock', value: '10' },
     { key: 'email_notifications', value: 'true' },
     { key: 'currency_symbol', value: '$' },

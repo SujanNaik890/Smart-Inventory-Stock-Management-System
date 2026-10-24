@@ -27,7 +27,7 @@ StockSmart AI faithfully reproduces the dashboard layout, color system, and UI c
 - JWT authentication with secure HTTP Authorization headers (`Bearer <token>`).
 - Bcrypt password hashing (never plaintext).
 - Protected API routes and protected React Router DOM routes.
-- Pre-seeded admin account with one-click demo login helper.
+- Admin account initialized with credentials configured in environment variables.
 
 ### 2. Live Dashboard
 - **4 Metric KPI Cards:** Total Products (48+), Total Stock Units (1,280+), Low Stock Items, Out of Stock Items.
@@ -88,7 +88,7 @@ StockSmart AI faithfully reproduces the dashboard layout, color system, and UI c
 | Layer | Technologies |
 |---|---|
 | **Frontend** | React 18, Vite, React Router DOM v7, Lucide React, Recharts, Axios, jsPDF |
-| **Backend** | Node.js (v24), Express.js, JSON Web Tokens (JWT), bcryptjs, Morgan |
+| **Backend** | Node.js (v24+), Express.js, JSON Web Tokens (JWT), bcryptjs, Morgan |
 | **Database** | Relational SQL schema (`database/schema.sql`, `stocksmart.db`) with foreign keys, constraints, and ACID transactions |
 | **Styling** | Custom SaaS CSS design system matching reference image specifications |
 
@@ -139,7 +139,7 @@ StockSmart AI faithfully reproduces the dashboard layout, color system, and UI c
 ## ⚡ Quick Start Instructions
 
 ### Prerequisites
-- Node.js (v18+ or v24+)
+- Node.js 24 or later (`node:sqlite` is used by the backend)
 - npm (v9+)
 
 ### 1. Clone & Setup
@@ -155,11 +155,15 @@ npm install
 ```
 
 ### 2. Configure Environment Variables
-In `server/.env`:
+Create `server/.env` from the example file (PowerShell, from the repository root:
+`Copy-Item .env.example server/.env`) and set:
 ```ini
 PORT=5000
-JWT_SECRET=stocksmart_production_secure_jwt_token_key_2026
-GEMINI_API_KEY=   # (Optional) Provide Gemini API key to enable generative enhancement
+JWT_SECRET=       # Generate with: node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+ADMIN_EMAIL=admin@stocksmart.ai
+ADMIN_PASSWORD=   # Set a unique password of at least 12 characters
+CLIENT_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+GEMINI_API_KEY=   # Optional: provide a Gemini API key for AI enhancement
 NODE_ENV=development
 ```
 
@@ -172,16 +176,13 @@ node src/config/seedRunner.js
 
 ### 4. Start the Application
 
-**Start the Backend Server (Port 5000):**
+Run each command from the repository root in a separate terminal:
 ```bash
-cd server
-node src/server.js
+npm run server
 ```
 
-**Start the React Vite Frontend (Port 3000):**
 ```bash
-cd client
-node ./node_modules/vite/bin/vite.js --port 3000 --host
+npm run client
 ```
 
 Access the application in your browser at:
@@ -189,15 +190,10 @@ Access the application in your browser at:
 
 ---
 
-## 🔑 Default Credentials
-
-| Field | Value |
-|---|---|
-| **Email** | `admin@stocksmart.ai` |
-| **Password** | `admin123` |
-| **Role** | Administrator |
-
-*(A convenient "Fill Demo Admin Credentials" button is also provided on the login page).*
+There are no default administrator credentials. Set `ADMIN_PASSWORD` before the first
+server start. If the database still has the old demo password, startup replaces it with
+`ADMIN_PASSWORD`; the server refuses to start until a secure password is configured.
+Keep `server/.env` private and do not commit it.
 
 ---
 

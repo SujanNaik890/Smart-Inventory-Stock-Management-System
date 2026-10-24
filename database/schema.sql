@@ -1,5 +1,5 @@
 -- StockSmart AI Database Schema
--- Compatible with SQLite, MySQL 8.0+, and PostgreSQL
+-- SQLite schema used by the Node.js backend.
 
 CREATE TABLE IF NOT EXISTS admins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

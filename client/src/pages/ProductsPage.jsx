@@ -60,11 +60,17 @@ export const ProductsPage = () => {
     initial_quantity: '',
     minimum_stock: '5',
     unit: 'pcs',
-    image_url: ''
+    image_url: '',
+    imageFile: null
   };
   const [formData, setFormData] = useState(initialFormData);
+  const [imagePreview, setImagePreview] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [formSubmitting, setFormSubmitting] = useState(false);
+
+  useEffect(() => () => {
+    if (imagePreview?.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
+  }, [imagePreview]);
 
   const fetchDropdownData = async () => {
     try {
@@ -119,6 +125,7 @@ export const ProductsPage = () => {
       ...initialFormData,
       category_id: categories[0]?.id || ''
     });
+    setImagePreview(null);
     setFormErrors({});
     setIsFormModalOpen(true);
   };
@@ -137,8 +144,10 @@ export const ProductsPage = () => {
       initial_quantity: product.quantity,
       minimum_stock: product.minimum_stock,
       unit: product.unit || 'pcs',
-      image_url: product.image_url || ''
+      image_url: product.image_url || '',
+      imageFile: null
     });
+    setImagePreview(product.image_url || null);
     setFormErrors({});
     setIsFormModalOpen(true);
   };
@@ -187,7 +196,8 @@ export const ProductsPage = () => {
           unit_price: Number(formData.unit_price),
           minimum_stock: Number(formData.minimum_stock),
           unit: formData.unit,
-          image_url: formData.image_url
+          image_url: formData.image_url,
+          imageFile: formData.imageFile
         });
         setToast({ type: 'success', message: `Product "${formData.name}" updated successfully!` });
       } else {
@@ -838,13 +848,35 @@ export const ProductsPage = () => {
 
             <div>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#101A46', marginBottom: '6px' }}>
-                Optional Image URL
+                Product Image (optional)
               </label>
               <input
-                type="url"
-                value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                placeholder="https://..."
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file && file.size > 5 * 1024 * 1024) {
+                    setFormErrors({ ...formErrors, image: 'Image must be 5 MB or smaller.' });
+                    setFormData({ ...formData, imageFile: null });
+                    setImagePreview(isEditing ? selectedProduct?.image_url || null : null);
+                    e.target.value = '';
+                    return;
+                  }
+                  if (file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                    setFormErrors({ ...formErrors, image: 'Choose a JPEG, PNG, or WebP image.' });
+                    setFormData({ ...formData, imageFile: null });
+                    setImagePreview(isEditing ? selectedProduct?.image_url || null : null);
+                    e.target.value = '';
+                    return;
+                  }
+                  setFormErrors({ ...formErrors, image: '' });
+                  setFormData({ ...formData, imageFile: file });
+                  if (file) {
+                    setImagePreview(URL.createObjectURL(file));
+                  } else {
+                    setImagePreview(isEditing ? selectedProduct?.image_url || null : null);
+                  }
+                }}
                 style={{
                   width: '100%',
                   height: '42px',
@@ -855,6 +887,10 @@ export const ProductsPage = () => {
                   fontSize: '13.5px'
                 }}
               />
+              {imagePreview && (
+                <img src={imagePreview} alt="Preview" style={{ maxHeight: '120px', marginTop: '8px' }} />
+              )}
+              {formErrors.image && <p style={{ color: '#DC2626', fontSize: '12px' }}>{formErrors.image}</p>}
             </div>
           </div>
 
@@ -882,7 +918,10 @@ export const ProductsPage = () => {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
             <button
               type="button"
-              onClick={() => setIsFormModalOpen(false)}
+              onClick={() => {
+                setIsFormModalOpen(false);
+                setImagePreview(null);
+              }}
               className="btn-secondary"
             >
               Cancel

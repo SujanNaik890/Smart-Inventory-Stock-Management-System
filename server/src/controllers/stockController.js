@@ -15,8 +15,8 @@ export const stockIn = (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please select a valid product.' });
     }
 
-    const qty = parseInt(quantity);
-    if (isNaN(qty) || qty <= 0) {
+    const qty = typeof quantity === 'number' || typeof quantity === 'string' ? Number(quantity) : NaN;
+    if (!Number.isSafeInteger(qty) || qty <= 0) {
       return res.status(400).json({ success: false, message: 'Purchased quantity must be a positive integer greater than zero.' });
     }
 
@@ -114,8 +114,8 @@ export const stockOut = (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please select a valid product.' });
     }
 
-    const qty = parseInt(quantity);
-    if (isNaN(qty) || qty <= 0) {
+    const qty = typeof quantity === 'number' || typeof quantity === 'string' ? Number(quantity) : NaN;
+    if (!Number.isSafeInteger(qty) || qty <= 0) {
       return res.status(400).json({ success: false, message: 'Issued quantity must be a positive integer greater than zero.' });
     }
 
@@ -255,14 +255,19 @@ export const getTransactions = (req, res, next) => {
 
     sql += ` ORDER BY t.created_at DESC`;
 
-    const allRows = query(sql, params);
-    const totalCount = allRows.length;
-
-    const pageNum = Math.max(1, parseInt(page) || 1);
-    const limitNum = Math.max(1, parseInt(limit) || 50);
+    const requestedPage = Number(page);
+    const requestedLimit = Number(limit);
+    const pageNum = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const limitNum = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, 100)
+      : 50;
     const offset = (pageNum - 1) * limitNum;
-
-    const paginatedTransactions = allRows.slice(offset, offset + limitNum);
+    if (!Number.isSafeInteger(offset)) {
+      return res.status(400).json({ success: false, message: 'Page number is too large.' });
+    }
+    const countSql = `SELECT COUNT(*) AS total FROM (${sql.slice(0, sql.lastIndexOf(' ORDER BY'))}) AS filtered_transactions`;
+    const totalCount = get(countSql, params).total;
+    const paginatedTransactions = query(`${sql} LIMIT ? OFFSET ?`, [...params, limitNum, offset]);
 
     res.json({
       success: true,

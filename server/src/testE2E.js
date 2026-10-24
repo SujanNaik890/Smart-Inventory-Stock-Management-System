@@ -9,6 +9,11 @@ async function runTests() {
   console.log('====================================================');
 
   let token = '';
+  const adminEmail = process.env.E2E_ADMIN_EMAIL || process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.E2E_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
+  if (!adminEmail || !adminPassword) {
+    throw new Error('Set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD (or ADMIN_EMAIL and ADMIN_PASSWORD) before running acceptance tests.');
+  }
 
   // TEST 1: Authentication
   console.log('\n--> TEST 1: Admin Authentication & Route Protection');
@@ -21,7 +26,7 @@ async function runTests() {
   const loginRes = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'admin@stocksmart.ai', password: 'admin123' })
+    body: JSON.stringify({ email: adminEmail, password: adminPassword })
   });
   const loginData = await loginRes.json();
   if (!loginData.success || !loginData.token) throw new Error('Login failed!');

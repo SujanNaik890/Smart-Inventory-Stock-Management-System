@@ -3,11 +3,21 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  baseURL: API_BASE_URL
 });
+
+const productPayload = (data) => {
+  if (!data.imageFile) return data;
+
+  const formData = new FormData();
+  Object.entries(data).forEach(([key, value]) => {
+    if (key !== 'imageFile' && value !== undefined && value !== null) {
+      formData.append(key, String(value));
+    }
+  });
+  formData.append('image', data.imageFile);
+  return formData;
+};
 
 // Request interceptor to attach JWT token
 api.interceptors.request.use(
@@ -55,8 +65,8 @@ export const dashboardService = {
 export const productService = {
   getAll: (params) => api.get('/products', { params }),
   getById: (id) => api.get(`/products/${id}`),
-  create: (data) => api.post('/products', data),
-  update: (id, data) => api.put(`/products/${id}`, data),
+  create: (data) => api.post('/products', productPayload(data)),
+  update: (id, data) => api.put(`/products/${id}`, productPayload(data)),
   delete: (id) => api.delete(`/products/${id}`)
 };
 

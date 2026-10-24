@@ -4,10 +4,13 @@ export const errorHandler = (err, req, res, next) => {
     console.error(err.stack);
   }
 
-  const statusCode = err.statusCode || 500;
+  const statusCode = err.statusCode || (err.code === 'LIMIT_FILE_SIZE' ? 413 : 500);
+  const message = statusCode >= 500
+    ? 'Internal Server Error'
+    : err.message || 'Request could not be processed.';
   res.status(statusCode).json({
     success: false,
-    message: err.message || 'Internal Server Error',
+    message,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 };

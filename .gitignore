@@ -13,6 +13,7 @@ node_modules/
 # Production Build
 dist/
 build/
+client/public/uploads/
 
 # Database files
 database/*.db-journal

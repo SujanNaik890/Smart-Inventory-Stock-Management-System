@@ -63,14 +63,19 @@ export const getAllProducts = (req, res, next) => {
       sql += ` ORDER BY p.${orderCol} ${direction}`;
     }
 
-    const allRows = query(sql, params);
-    const totalCount = allRows.length;
-
-    const pageNum = Math.max(1, parseInt(page) || 1);
-    const limitNum = Math.max(1, parseInt(limit) || 100);
+    const requestedPage = Number(page);
+    const requestedLimit = Number(limit);
+    const pageNum = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const limitNum = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, 100)
+      : 100;
     const offset = (pageNum - 1) * limitNum;
-
-    const paginatedProducts = allRows.slice(offset, offset + limitNum);
+    if (!Number.isSafeInteger(offset)) {
+      return res.status(400).json({ success: false, message: 'Page number is too large.' });
+    }
+    const countSql = `SELECT COUNT(*) AS total FROM (${sql.slice(0, sql.lastIndexOf(' ORDER BY'))}) AS filtered_products`;
+    const totalCount = get(countSql, params).total;
+    const paginatedProducts = query(`${sql} LIMIT ? OFFSET ?`, [...params, limitNum, offset]);
 
     res.json({
       success: true,
@@ -144,31 +149,31 @@ export const createProduct = (req, res, next) => {
       minimum_stock = 5,
       unit = 'units',
       image_url = ''
-    } = req.body;
+    } = req.body || {};
 
     // Validation
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Product name is required.' });
     }
-    if (!sku || !sku.trim()) {
+    if (typeof sku !== 'string' || !sku.trim()) {
       return res.status(400).json({ success: false, message: 'SKU is required.' });
     }
     if (!category_id) {
       return res.status(400).json({ success: false, message: 'Category is required.' });
     }
 
-    const priceNum = Number(unit_price);
-    const qtyNum = parseInt(initial_quantity) || 0;
-    const minNum = parseInt(minimum_stock) || 0;
+    const priceNum = typeof unit_price === 'number' || typeof unit_price === 'string' ? Number(unit_price) : NaN;
+    const qtyNum = typeof initial_quantity === 'number' || typeof initial_quantity === 'string' ? Number(initial_quantity) : NaN;
+    const minNum = typeof minimum_stock === 'number' || typeof minimum_stock === 'string' ? Number(minimum_stock) : NaN;
 
-    if (isNaN(priceNum) || priceNum < 0) {
-      return res.status(400).json({ success: false, message: 'Unit price cannot be negative.' });
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
+      return res.status(400).json({ success: false, message: 'Unit price must be a non-negative number.' });
     }
-    if (qtyNum < 0) {
-      return res.status(400).json({ success: false, message: 'Initial quantity cannot be negative.' });
+    if (!Number.isSafeInteger(qtyNum) || qtyNum < 0) {
+      return res.status(400).json({ success: false, message: 'Initial quantity must be a non-negative integer.' });
     }
-    if (minNum < 0) {
-      return res.status(400).json({ success: false, message: 'Minimum stock cannot be negative.' });
+    if (!Number.isSafeInteger(minNum) || minNum < 0) {
+      return res.status(400).json({ success: false, message: 'Minimum stock must be a non-negative integer.' });
     }
 
     // Verify SKU uniqueness
@@ -254,18 +259,22 @@ export const updateProduct = (req, res, next) => {
       minimum_stock,
       unit,
       image_url
-    } = req.body;
+    } = req.body || {};
 
     const existing = get('SELECT * FROM products WHERE id = ? AND is_archived = 0', [id]);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Product not found.' });
     }
 
-    if (name && !name.trim()) {
+    if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
       return res.status(400).json({ success: false, message: 'Product name cannot be empty.' });
     }
 
-    if (sku && sku.trim()) {
+    if (sku !== undefined && (typeof sku !== 'string' || !sku.trim())) {
+      return res.status(400).json({ success: false, message: 'SKU cannot be empty.' });
+    }
+
+    if (sku) {
       const duplicateSku = get('SELECT id FROM products WHERE LOWER(sku) = LOWER(?) AND id != ?', [sku.trim(), id]);
       if (duplicateSku) {
         return res.status(400).json({ success: false, message: `SKU "${sku.trim()}" is already assigned to another product.` });
@@ -279,14 +288,18 @@ export const updateProduct = (req, res, next) => {
       }
     }
 
-    const priceNum = unit_price !== undefined ? Number(unit_price) : existing.unit_price;
-    const minNum = minimum_stock !== undefined ? parseInt(minimum_stock) : existing.minimum_stock;
+    const priceNum = unit_price !== undefined
+      ? (typeof unit_price === 'number' || typeof unit_price === 'string' ? Number(unit_price) : NaN)
+      : existing.unit_price;
+    const minNum = minimum_stock !== undefined
+      ? (typeof minimum_stock === 'number' || typeof minimum_stock === 'string' ? Number(minimum_stock) : NaN)
+      : existing.minimum_stock;
 
-    if (priceNum < 0) {
-      return res.status(400).json({ success: false, message: 'Unit price cannot be negative.' });
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
+      return res.status(400).json({ success: false, message: 'Unit price must be a non-negative number.' });
     }
-    if (minNum < 0) {
-      return res.status(400).json({ success: false, message: 'Minimum stock threshold cannot be negative.' });
+    if (!Number.isSafeInteger(minNum) || minNum < 0) {
+      return res.status(400).json({ success: false, message: 'Minimum stock threshold must be a non-negative integer.' });
     }
 
     run(`
@@ -311,7 +324,7 @@ export const updateProduct = (req, res, next) => {
       priceNum,
       minNum,
       unit || null,
-      image_url !== undefined ? image_url : existing.image_url,
+      req.file ? `/uploads/${req.file.filename}` : (image_url !== undefined ? image_url : existing.image_url),
       id
     ]);
 

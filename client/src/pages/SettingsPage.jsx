@@ -65,8 +65,8 @@ export const SettingsPage = () => {
     setPasswordError('');
 
     if (newPassword) {
-      if (newPassword.length < 6) {
-        setPasswordError('New password must be at least 6 characters long.');
+      if (newPassword.length < 12) {
+        setPasswordError('New password must be at least 12 characters long.');
         return;
       }
       if (newPassword !== confirmPassword) {

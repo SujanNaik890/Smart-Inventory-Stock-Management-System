@@ -29,7 +29,12 @@ export const getSettings = (req, res, next) => {
 
 export const updateSettings = (req, res, next) => {
   try {
-    const { settings, profile, newPassword } = req.body;
+    const { settings, profile, newPassword } = req.body || {};
+
+    if (newPassword !== undefined && newPassword !== null && newPassword !== '' &&
+        (typeof newPassword !== 'string' || newPassword.length < 12)) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 12 characters long.' });
+    }
 
     if (settings && typeof settings === 'object') {
       for (const [key, value] of Object.entries(settings)) {
@@ -50,9 +55,9 @@ export const updateSettings = (req, res, next) => {
       `, [name || null, avatar_url !== undefined ? avatar_url : null, req.admin.id]);
     }
 
-    if (newPassword && newPassword.trim().length >= 6 && req.admin) {
-      const salt = bcrypt.genSaltSync(10);
-      const hash = bcrypt.hashSync(newPassword.trim(), salt);
+    if (newPassword && req.admin) {
+      const salt = bcrypt.genSaltSync(12);
+      const hash = bcrypt.hashSync(newPassword, salt);
       run('UPDATE admins SET password_hash = ? WHERE id = ?', [hash, req.admin.id]);
     }
 

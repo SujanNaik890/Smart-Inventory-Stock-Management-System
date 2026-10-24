@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import CubeLogo from '../components/CubeLogo';
 
@@ -37,12 +37,6 @@ export const LoginPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDemoFill = () => {
-    setEmail('admin@stocksmart.ai');
-    setPassword('admin123');
-    setErrorMessage('');
   };
 
   return (
@@ -244,42 +238,6 @@ export const LoginPage = () => {
           </button>
         </form>
 
-        {/* Demo Helper Pill */}
-        <div
-          style={{
-            marginTop: '28px',
-            paddingTop: '20px',
-            borderTop: '1px solid #E7ECF7',
-            textAlign: 'center'
-          }}
-        >
-          <p style={{ fontSize: '12px', color: '#727D9E', marginBottom: '8px' }}>
-            Quick Development Login
-          </p>
-          <button
-            type="button"
-            onClick={handleDemoFill}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#EEF2FF',
-              color: '#405BFF',
-              border: '1px dashed #C7D2FE',
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              fontSize: '12px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#E0E7FF')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#EEF2FF')}
-          >
-            <ShieldCheck size={14} />
-            Fill Demo Admin Credentials (admin@stocksmart.ai)
-          </button>
-        </div>
       </div>
     </div>
   );

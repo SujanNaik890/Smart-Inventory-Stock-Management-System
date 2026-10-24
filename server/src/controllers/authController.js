@@ -4,9 +4,9 @@ import { get } from '../config/db.js';
 
 export const login = (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
     }
 
@@ -20,11 +20,10 @@ export const login = (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
 
-    const secret = process.env.JWT_SECRET || 'stocksmart_super_secret_jwt_key_2026';
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: admin.role },
-      secret,
-      { expiresIn: '7d' }
+      process.env.JWT_SECRET,
+      { expiresIn: '7d', algorithm: 'HS256' }
     );
 
     const userProfile = {
