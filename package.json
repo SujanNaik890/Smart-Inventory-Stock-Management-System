@@ -1,0 +1,11 @@
+{
+  "name": "stocksmart-ai",
+  "version": "1.0.0",
+  "description": "StockSmart AI — Smart Inventory & Stock Management System",
+  "private": true,
+  "scripts": {
+    "server": "node server/src/server.js",
+    "client": "node client/node_modules/vite/bin/vite.js --prefix client",
+    "seed": "node server/src/config/seedRunner.js"
+  }
+}
